@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SKYLINES eWallet</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+body, html { margin:0; font-family:'Montserrat',sans-serif; background:#f5f5f5; height:100%; }
+.container { max-width:450px; background:#fff; padding:30px; border:1px solid #000; margin:40px auto; border-radius:12px; }
+h2 { margin-top:0; font-size:20px; }
+.form-field { margin:10px 0; }
+.form-field input {
+  width: 90%;
+  padding: 13px;   /* asal 12px → kecil sikit */
+  font-size: 14px; /* asal 16px → kecil */
+  border-radius: 50px; 
+  margin: 6px 0;   /* jarak pun kecil */
+  border: 1px solid #ccc;
+}
+.form-field input:focus { outline:none; border-color:#007bff; }
+.button-group { display:flex; gap:10px; margin-top:15px; }
+.btn { flex:1; padding:12px; border-radius:50px; border:1px solid #000; font-weight:bold; font-size:15px; cursor:pointer; background:transparent; transition:all 0.2s ease; }
+.btn-next { border-color:#007bff; color:#007bff; }
+.btn-next:hover { background:#007bff; color:#fff; }
+.btn-back { border-color:#555; color:#555; }
+.btn-back:hover { background:#555; color:#fff; }
+.btn-batalkan { border-color:#ff5f00; color:#ff5f00; }
+.btn-batalkan:hover { background:#ff5f00; color:#fff; }
+.hidden { display:none; }
+.resit-box { border:1px solid #000; padding:15px; margin:15px 0; border-radius:8px; background:#fafafa; text-align:left; }
+</style>
+</head>
+<body>
+
+<div class="container" id="login-page">
+  <h2>SKYLINES eWallet Portal</h2>
+  <div class="form-field">
+    <input type="text" id="login-token" placeholder="Token ID">
+  </div>
+  <div class="form-field">
+    <input type="password" id="login-pin" placeholder="PIN (6 Digit)" maxlength="6">
+  </div>
+  <div class="button-group">
+    <button class="btn btn-next" onclick="login()">Log Masuk</button>
+  </div>
+</div>
+
+<div class="container hidden" id="home-page">
+  <h2 id="welcome-text">Hai!</h2>
+  <p id="status-text"></p>
+  <div class="button-group">
+    <button class="btn btn-next" onclick="showDeposit()">Deposit Wang</button>
+    <button class="btn btn-next" onclick="showTransfer()">Pindahkan Wang</button>
+  </div>
+  <div class="button-group">
+    <button class="btn btn-batalkan" onclick="logout()">Log Keluar</button>
+  </div>
+</div>
+
+<div class="container hidden" id="deposit-page">
+  <h2>Deposit Wang</h2>
+  <div class="form-field">
+    <input type="number" id="deposit-amount" placeholder="Jumlah (RM10 - RM1000)">
+  </div>
+  <div class="form-field">
+    <input type="password" id="deposit-pin" placeholder="Sahkan PIN" maxlength="6">
+  </div>
+  <div class="button-group">
+    <button class="btn btn-back" onclick="backHome()">Kembali</button>
+    <button class="btn btn-next" onclick="confirmDeposit()">Teruskan</button>
+  </div>
+</div>
+
+<div class="container hidden" id="transfer-page">
+  <h2>Pindahkan Wang</h2>
+  <div class="form-field">
+    <input type="email" id="transfer-email" placeholder="Emel Penerima">
+  </div>
+  <div class="form-field">
+    <input type="number" id="transfer-amount" placeholder="Jumlah (RM)">
+  </div>
+  <div class="form-field">
+    <input type="password" id="transfer-pin" placeholder="Sahkan PIN" maxlength="6">
+  </div>
+  <div class="button-group">
+    <button class="btn btn-back" onclick="backHome()">Kembali</button>
+    <button class="btn btn-next" onclick="confirmTransfer()">Teruskan</button>
+  </div>
+</div>
+
+<div class="container hidden" id="resit-page">
+  <h2>Resit Transaksi</h2>
+  <div id="resit-box" class="resit-box"></div>
+  <div class="button-group">
+    <button class="btn btn-back" onclick="backAfterResit()">Kembali</button>
+    <button class="btn btn-next" onclick="shareResit()">Share / Cetak</button>
+  </div>
+</div>
+
+<script>
+// Firebase config
+var firebaseConfig = {
+  apiKey: "AIzaSyDcAq_rnJ3342lCpxalebddMFGDFUrypUg",
+  authDomain: "aeris-data-smkmii.firebaseapp.com",
+  projectId: "aeris-data-smkmii"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+let currentUser = null;
+let currentBalance = 0;
+let lastAction = null;
+
+// ================= Login =================
+async function login(){
+  const token = document.getElementById('login-token').value.trim();
+  const pin = document.getElementById('login-pin').value.trim();
+  if(!token || !pin) return alert("Isi semua maklumat!");
+
+  const snap = await db.collection("registerations")
+    .where("tokenID","==",token)
+    .where("pin","==",pin)
+    .get();
+
+  if(snap.empty){ alert("Token/PIN salah!"); return; }
+
+  currentUser = snap.docs[0];
+  currentBalance = currentUser.data().wangsemasa || 0;
+
+  document.getElementById('login-page').classList.add('hidden');
+  document.getElementById('home-page').classList.remove('hidden');
+
+  document.getElementById('welcome-text').textContent = "Hai, " + currentUser.data().firstName + "!";
+  document.getElementById('status-text').textContent = currentUser.data().finalconfirm
+    ? "Baki semasa anda: RM " + currentBalance
+    : "Awak belum deposit apa-apa.";
+}
+
+// ================= Logout =================
+function logout(){
+  currentUser=null;
+  document.getElementById('home-page').classList.add('hidden');
+  document.getElementById('login-page').classList.remove('hidden');
+}
+
+// ================= Navigation =================
+function showDeposit(){
+  document.getElementById('home-page').classList.add('hidden');
+  document.getElementById('deposit-page').classList.remove('hidden');
+}
+function showTransfer(){
+  document.getElementById('home-page').classList.add('hidden');
+  document.getElementById('transfer-page').classList.remove('hidden');
+}
+function backHome(){
+  document.querySelectorAll('.container').forEach(c=>c.classList.add('hidden'));
+  document.getElementById('home-page').classList.remove('hidden');
+}
+function backAfterResit(){
+  document.querySelectorAll('.container').forEach(c=>c.classList.add('hidden'));
+  document.getElementById('home-page').classList.remove('hidden');
+}
+
+// ================= Deposit =================
+async function confirmDeposit(){
+  const amount = parseFloat(document.getElementById('deposit-amount').value);
+  const pin = document.getElementById('deposit-pin').value.trim();
+  if(pin!==currentUser.data().pin) return alert("PIN salah!");
+  if(amount<10 || amount>1000) return alert("Jumlah tidak sah!");
+
+  currentBalance += amount;
+  lastAction = { type:"Deposit", amount };
+
+  // update user
+  await db.collection("registerations").doc(currentUser.id).update({
+    wangsemasa: currentBalance,
+    finalconfirm:true
+  });
+
+  // add to moneyhistory
+  await db.collection("moneyhistory").add({
+    user: currentUser.data().email,
+    type:"Deposit",
+    amount:amount,
+    balance:currentBalance,
+    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+  });
+
+  showResit("Deposit", amount);
+}
+
+// ================= Transfer =================
+async function confirmTransfer(){
+  const email = document.getElementById('transfer-email').value.trim();
+  const amount = parseFloat(document.getElementById('transfer-amount').value);
+  const pin = document.getElementById('transfer-pin').value.trim();
+
+  if(pin!==currentUser.data().pin) return alert("PIN salah!");
+  if(amount<=0 || amount>currentBalance) return alert("Jumlah tidak sah!");
+
+  currentBalance -= amount;
+  lastAction = { type:"Transfer", amount, email };
+
+  // update sender
+  await db.collection("registerations").doc(currentUser.id).update({
+    wangsemasa: currentBalance
+  });
+
+  // add to history
+  await db.collection("moneyhistory").add({
+    user: currentUser.data().email,
+    type:"Transfer",
+    to: email,
+    amount: amount,
+    balance: currentBalance,
+    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+  });
+
+  showResit("Transfer", amount, email);
+}
+
+// ================= Resit =================
+function showResit(type, amount, email=null){
+  document.querySelectorAll('.container').forEach(c=>c.classList.add('hidden'));
+  document.getElementById('resit-page').classList.remove('hidden');
+
+  const data = currentUser.data();
+  const box = document.getElementById('resit-box');
+  box.innerHTML = `
+    <p><b>Nama:</b> ${data.firstName} ${data.lastName}</p>
+    <p><b>Email:</b> ${data.email}</p>
+    <p><b>Phone:</b> ${data.phone}</p>
+    <p><b>Jenis:</b> ${type}</p>
+    ${email? `<p><b>Kepada:</b> ${email}</p>`:""}
+    <p><b>Jumlah:</b> RM ${amount}</p>
+    <p><b>Baki Akhir:</b> RM ${currentBalance}</p>
+  `;
+}
+
+function shareResit(){
+  const element = document.getElementById("resit-box");
+  html2canvas(element).then(canvas=>{
+    canvas.toBlob(blob=>{
+      const file = new File([blob],"resit.png",{type:"image/png"});
+      if(navigator.share){
+        navigator.share({
+          files:[file],
+          title:"Resit Transaksi SKYLINES",
+          text:"Resit transaksi eWallet"
+        }).then(()=>backAfterResit());
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a=document.createElement("a");
+        a.href=url; a.download="resit.png"; a.click();
+        URL.revokeObjectURL(url);
+        backAfterResit();
+      }
+    });
+  });
+}
+</script>
+
+</body>
+</html>
