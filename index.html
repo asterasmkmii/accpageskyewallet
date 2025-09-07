@@ -1,109 +1,219 @@
 <!DOCTYPE html>
 <html lang="ms">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SKYLINES eWallet</title>
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>SKYLINES eWallet Account Manager</title>
+
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+
+<!-- Firebase compat -->
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+
+<!-- html2canvas for receipt capture/share -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
 <style>
-body, html { margin:0; font-family:'Montserrat',sans-serif; background:#f5f5f5; height:100%; }
-.container { max-width:450px; background:#fff; padding:30px; border:1px solid #000; margin:40px auto; border-radius:12px; }
-h2 { margin-top:0; font-size:20px; }
-.form-field { margin:10px 0; }
-.form-field input {
-  width: 90%;
-  padding: 13px;   /* asal 12px → kecil sikit */
-  font-size: 14px; /* asal 16px → kecil */
-  border-radius: 50px; 
-  margin: 6px 0;   /* jarak pun kecil */
-  border: 1px solid #ccc;
-}
-.form-field input:focus { outline:none; border-color:#007bff; }
-.button-group { display:flex; gap:10px; margin-top:15px; }
-.btn { flex:1; padding:12px; border-radius:50px; border:1px solid #000; font-weight:bold; font-size:15px; cursor:pointer; background:transparent; transition:all 0.2s ease; }
-.btn-next { border-color:#007bff; color:#007bff; }
-.btn-next:hover { background:#007bff; color:#fff; }
-.btn-back { border-color:#555; color:#555; }
-.btn-back:hover { background:#555; color:#fff; }
-.btn-batalkan { border-color:#ff5f00; color:#ff5f00; }
-.btn-batalkan:hover { background:#ff5f00; color:#fff; }
-.hidden { display:none; }
-.resit-box { border:1px solid #000; padding:15px; margin:15px 0; border-radius:8px; background:#fafafa; text-align:left; }
+  :root{
+    --blue:#1e88e5;
+    --dark:#0b2545;
+    --card-w:460px;
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  body{
+    font-family: 'Montserrat', system-ui, Roboto, Arial;
+    background: linear-gradient(180deg,#e9f2ff 0%, #fbfdff 100%);
+    margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  .wrap{width:100%; max-width:var(--card-w)}
+  .top-brand{display:flex;gap:12px;align-items:center;margin-bottom:16px}
+  .logo{width:64px;height:64px;border-radius:12px;background:linear-gradient(135deg,var(--blue),#38a3ff);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:22px;box-shadow:0 8px 26px rgba(30,136,229,.16)}
+  .brand-title{font-size:18px;font-weight:700;color:var(--dark)}
+  .brand-sub{font-size:12px;color:#556; margin-top:2px}
+
+  .card{background:#fff;border-radius:var(--radius);padding:18px;border:1px solid rgba(11,37,69,0.06);box-shadow:0 10px 30px rgba(11,37,69,0.06)}
+  h2{margin:0;font-size:18px;color:var(--dark)}
+  p.muted{margin:6px 0 12px;color:#556;font-size:13px}
+  .field{margin:10px 0}
+  label{display:block;font-weight:700;font-size:13px;margin-bottom:6px}
+  input[type=text], input[type=email], input[type=password], select, input[type=number] {
+    width:100%; padding:9px 12px; border-radius:10px; border:1px solid #d6e1fb; font-size:14px; background:#fbfeff;
+  }
+  input[readonly]{background:#f3f7ff}
+  .small{font-size:13px;color:#6b7280;margin-top:6px}
+  .btn{width:100%; padding:10px;border-radius:999px;border:1px solid #dfefff;font-weight:700;font-size:14px;cursor:pointer;background:#fff}
+  .btn-primary{background:linear-gradient(90deg,var(--blue),#38a3ff);color:#fff;border:none;box-shadow:0 8px 26px rgba(30,136,229,0.12)}
+  .btn-ghost{background:transparent;color:var(--dark);border:1px solid #eef6ff}
+  .btn-danger{background:#fff3f2;color:#ff4d4f;border:1px solid #ffd6d4}
+  .row{display:flex;gap:8px}
+  .col{flex:1}
+
+  /* numpad / keys */
+  .numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+  .key{padding:12px;border-radius:8px;text-align:center;background:#f1f6ff;border:1px solid #dbe9ff;cursor:pointer;font-weight:700;color:var(--dark);user-select:none}
+  .key.ok{background:var(--blue);color:#fff}
+  .key.action{background:#fff3f2;color:#b91c1c;border:1px solid #ffd6d4}
+  .pin-dots{display:flex;gap:8px;justify-content:center;margin-top:8px}
+  .dot{width:12px;height:12px;border-radius:50%;background:#e6eefc;border:1px solid #ccd6ef}
+
+  /* amount */
+  .amount-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}
+  .amt-btn{padding:10px;border-radius:10px;background:#f8fbff;border:1px solid #dfefff;cursor:pointer;text-align:center;font-weight:700}
+  .amt-btn.selected{border-color:var(--blue);box-shadow:0 4px 14px rgba(30,136,229,0.08)}
+
+  /* email keyboard */
+  .email-keys{display:flex;flex-wrap:wrap;gap:6px;padding:8px;border-radius:8px;background:#fbfdff;border:1px solid #eef6ff}
+  .email-keys button{padding:8px;border-radius:6px;background:#fff;border:1px solid #edf4ff;cursor:pointer}
+
+  /* receipt - 54mm style */
+  .receipt{
+    width:54mm; /* target 54mm thermal width */
+    max-width:100%;
+    font-family: 'Roboto', monospace;
+    font-size:12px;
+    padding:12px;
+    border-radius:6px;
+    background:#fff;
+    border:1px dashed #dbe9ff;
+    color:#111;
+    line-height:1.3;
+    white-space:pre-wrap;
+  }
+  .receipt .title{text-align:center;font-weight:700;margin-bottom:8px}
+  .receipt .line{border-top:1px dashed #e6eefc;margin:8px 0}
+  .receipt small{color:#666}
+  .receipt .center{text-align:center}
+  .receipt .spacer{height:12px}
+
+  /* pending */
+  .pending-card{padding:10px;border-radius:10px;border:1px solid #eef6ff;background:#fff;margin-bottom:8px}
+  .pending-actions{display:flex;gap:8px;margin-top:8px}
+
+  .hidden{display:none}
+  @media (max-width:480px){ :root{--card-w:360px} .wrap{padding:8px} .card{padding:12px}}
 </style>
 </head>
 <body>
+  <div class="wrap">
+    <div class="top-brand">
+      <div class="logo">MYS</div>
+      <div>
+        <div class="brand-title">SKYLINES eWallet</div>
+        <div class="brand-sub">Secured flows</div>
+      </div>
+    </div>
 
-<div class="container" id="login-page">
-  <h2>SKYLINES eWallet Portal</h2>
-  <div class="form-field">
-    <input type="text" id="login-token" placeholder="Token ID">
-  </div>
-  <div class="form-field">
-    <input type="password" id="login-pin" placeholder="PIN (6 Digit)" maxlength="6">
-  </div>
-  <div class="button-group">
-    <button class="btn btn-next" onclick="login()">Log Masuk</button>
-  </div>
-</div>
+    <!-- LOGIN CARD -->
+    <div class="card" id="loginCard">
+      <h2>Log Masuk</h2>
+      <p class="muted">Masukkan PIN 6 digit anda menggunakan numpad di bawah.</p>
 
-<div class="container hidden" id="home-page">
-  <h2 id="welcome-text">Hai!</h2>
-  <p id="status-text"></p>
-  <div class="button-group">
-    <button class="btn btn-next" onclick="showDeposit()">Deposit Wang</button>
-    <button class="btn btn-next" onclick="showTransfer()">Pindahkan Wang</button>
-  </div>
-  <div class="button-group">
-    <button class="btn btn-batalkan" onclick="logout()">Log Keluar</button>
-  </div>
-</div>
+      <div style="text-align:center;margin-top:8px">
+        <div id="pinDots" class="pin-dots">
+          <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+          <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        </div>
+        <input id="loginPinHidden" type="password" readonly style="position:absolute;left:-9999px;opacity:0">
+      </div>
 
-<div class="container hidden" id="deposit-page">
-  <h2>Deposit Wang</h2>
-  <div class="form-field">
-    <input type="number" id="deposit-amount" placeholder="Jumlah (RM10 - RM1000)">
-  </div>
-  <div class="form-field">
-    <input type="password" id="deposit-pin" placeholder="Sahkan PIN" maxlength="6">
-  </div>
-  <div class="button-group">
-    <button class="btn btn-back" onclick="backHome()">Kembali</button>
-    <button class="btn btn-next" onclick="confirmDeposit()">Teruskan</button>
-  </div>
-</div>
+      <div class="numpad" id="loginNumpad"></div>
+      <p class="small">Sila tekan ok jika PIN sudah dimasukkan.</p>
+    </div>
 
-<div class="container hidden" id="transfer-page">
-  <h2>Pindahkan Wang</h2>
-  <div class="form-field">
-    <input type="email" id="transfer-email" placeholder="Emel Penerima">
-  </div>
-  <div class="form-field">
-    <input type="number" id="transfer-amount" placeholder="Jumlah (RM)">
-  </div>
-  <div class="form-field">
-    <input type="password" id="transfer-pin" placeholder="Sahkan PIN" maxlength="6">
-  </div>
-  <div class="button-group">
-    <button class="btn btn-back" onclick="backHome()">Kembali</button>
-    <button class="btn btn-next" onclick="confirmTransfer()">Teruskan</button>
-  </div>
-</div>
+    <!-- MAIN -->
+    <div class="card hidden" id="mainCard">
+      <h2 id="userGreeting">Hai,</h2>
+      <p class="muted" id="userStatus">Memuatkan...</p>
 
-<div class="container hidden" id="resit-page">
-  <h2>Resit Transaksi</h2>
-  <div id="resit-box" class="resit-box"></div>
-  <div class="button-group">
-    <button class="btn btn-back" onclick="backAfterResit()">Kembali</button>
-    <button class="btn btn-next" onclick="shareResit()">Share / Cetak</button>
+      <div style="margin-top:10px">
+        <div style="margin-bottom:8px"><button class="btn btn-primary" onclick="openPanel('deposit')">💰 Deposit Wang</button></div>
+        <div style="margin-bottom:8px"><button class="btn btn-ghost" onclick="openPanel('transfer')">🔁 Pindahkan Wang</button></div>
+        <div style="margin-bottom:8px"><button class="btn btn-ghost" onclick="openPanel('receive')">📥 Terima Wang</button></div>
+        <div><button class="btn btn-ghost" onclick="doLogout()">⎋ Log Keluar</button></div>
+      </div>
+    </div>
+
+    <!-- DEPOSIT -->
+    <div class="card hidden" id="depositCard">
+      <h2>Deposit</h2>
+      <p class="muted">Pilih jumlah kemudian masukkan <strong>PIN</strong> dan <strong>Token ID</strong> (10 digit).</p>
+
+      <div class="field">
+        <label>Pilih Jumlah</label>
+        <div id="depositAmounts" class="amount-grid"></div>
+      </div>
+
+      <div class="field">
+        <label>Masukkan PIN</label>
+        <div id="depositPinDots" class="pin-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+        <input id="depositPinHidden" type="password" readonly style="position:absolute;left:-9999px;opacity:0">
+        <div class="numpad" id="depositPinNumpad"></div>
+      </div>
+
+      <div class="row" style="margin-top:8px">
+        <div class="col"><button class="btn btn-ghost" onclick="closePanel()">Kembali</button></div>
+        <div class="col"><button class="btn btn-primary" onclick="startDepositTokenStep()">Teruskan</button></div>
+      </div>
+    </div>
+
+    <!-- TRANSFER -->
+    <div class="card hidden" id="transferCard">
+      <h2>Pindahkan Wang</h2>
+      <p class="muted">Masukkan emel penerima, pilih jumlah, masukkan PIN.</p>
+
+      <div class="field">
+        <label>Emel Penerima</label>
+        <input id="transferEmail" type="text" readonly placeholder="Gunakan keyboard di bawah">
+        <div class="email-keys" id="emailKeys"></div>
+        <div style="margin-top:6px" class="row">
+          <div class="col"><button class="btn btn-ghost" onclick="emailBack()">⌫</button></div>
+          <div class="col"><button class="btn btn-ghost" onclick="emailAt()">@gmail.com</button></div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Pilih Jumlah</label>
+        <div id="transferAmounts" class="amount-grid"></div>
+      </div>
+
+      <div class="field">
+        <label>Masukkan PIN</label>
+        <div id="transferPinDots" class="pin-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+        <input id="transferPinHidden" type="password" readonly style="position:absolute;left:-9999px;opacity:0">
+        <div class="numpad" id="transferPinNumpad"></div>
+      </div>
+
+      <div class="row" style="margin-top:8px">
+        <div class="col"><button class="btn btn-ghost" onclick="closePanel()">Kembali</button></div>
+        <div class="col"><button class="btn btn-primary" onclick="startTransferTokenStep()">Teruskan</button></div>
+      </div>
+    </div>
+
+    <!-- RECEIVE (pending list) -->
+    <div class="card hidden" id="receiveCard">
+      <h2>Terima Wang</h2>
+      <p class="muted">Senarai pemindahan menunggu untuk emel anda. Tekan Terima/Tolak. Terima memerlukan PIN.</p>
+      <div id="pendingContainer"></div>
+      <div style="margin-top:8px"><button class="btn btn-ghost" onclick="closePanel()">Kembali</button></div>
+    </div>
+
+    <!-- RECEIPT -->
+    <div class="card hidden" id="receiptCard">
+      <h2>Resit</h2>
+      <div class="receipt" id="receiptBox"></div>
+      <div class="row" style="margin-top:10px">
+        <div class="col"><button class="btn btn-ghost" onclick="closePanel()">Kembali</button></div>
+        <div class="col"><button id="shareBtn" class="btn btn-primary" onclick="shareAndReturn()">Cetak Resit</button></div>
+      </div>
+    </div>
   </div>
-</div>
 
 <script>
-// Firebase config
-var firebaseConfig = {
+/* FIREBASE config & init */
+const firebaseConfig = {
   apiKey: "AIzaSyDcAq_rnJ3342lCpxalebddMFGDFUrypUg",
   authDomain: "aeris-data-smkmii.firebaseapp.com",
   projectId: "aeris-data-smkmii"
@@ -111,158 +221,440 @@ var firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-let currentUser = null;
-let currentBalance = 0;
-let lastAction = null;
+/* STATE */
+let loginPin = '';
+let depositPin = '';
+let transferPin = '';
+let currentUserDoc = null;
+let selectedDepositAmount = 0;
+let selectedTransferAmount = 0;
 
-// ================= Login =================
-async function login(){
-  const token = document.getElementById('login-token').value.trim();
-  const pin = document.getElementById('login-pin').value.trim();
-  if(!token || !pin) return alert("Isi semua maklumat!");
-
-  const snap = await db.collection("registerations")
-    .where("tokenID","==",token)
-    .where("pin","==",pin)
-    .get();
-
-  if(snap.empty){ alert("Token/PIN salah!"); return; }
-
-  currentUser = snap.docs[0];
-  currentBalance = currentUser.data().wangsemasa || 0;
-
-  document.getElementById('login-page').classList.add('hidden');
-  document.getElementById('home-page').classList.remove('hidden');
-
-  document.getElementById('welcome-text').textContent = "Hai, " + currentUser.data().firstName + "!";
-  document.getElementById('status-text').textContent = currentUser.data().finalconfirm
-    ? "Baki semasa anda: RM " + currentBalance
-    : "Awak belum deposit apa-apa.";
-}
-
-// ================= Logout =================
-function logout(){
-  currentUser=null;
-  document.getElementById('home-page').classList.add('hidden');
-  document.getElementById('login-page').classList.remove('hidden');
-}
-
-// ================= Navigation =================
-function showDeposit(){
-  document.getElementById('home-page').classList.add('hidden');
-  document.getElementById('deposit-page').classList.remove('hidden');
-}
-function showTransfer(){
-  document.getElementById('home-page').classList.add('hidden');
-  document.getElementById('transfer-page').classList.remove('hidden');
-}
-function backHome(){
-  document.querySelectorAll('.container').forEach(c=>c.classList.add('hidden'));
-  document.getElementById('home-page').classList.remove('hidden');
-}
-function backAfterResit(){
-  document.querySelectorAll('.container').forEach(c=>c.classList.add('hidden'));
-  document.getElementById('home-page').classList.remove('hidden');
-}
-
-// ================= Deposit =================
-async function confirmDeposit(){
-  const amount = parseFloat(document.getElementById('deposit-amount').value);
-  const pin = document.getElementById('deposit-pin').value.trim();
-  if(pin!==currentUser.data().pin) return alert("PIN salah!");
-  if(amount<10 || amount>1000) return alert("Jumlah tidak sah!");
-
-  currentBalance += amount;
-  lastAction = { type:"Deposit", amount };
-
-  // update user
-  await db.collection("registerations").doc(currentUser.id).update({
-    wangsemasa: currentBalance,
-    finalconfirm:true
+/* HELPERS: UI show/hide */
+function showCard(id){
+  ['loginCard','mainCard','depositCard','transferCard','receiveCard','receiptCard'].forEach(x=>{
+    const el=document.getElementById(x);
+    if(el) el.classList.add('hidden');
   });
+  const target=document.getElementById(id);
+  if(target) target.classList.remove('hidden');
+}
+function closePanel(){ if(currentUserDoc) showCard('mainCard'); else showCard('loginCard'); }
 
-  // add to moneyhistory
-  await db.collection("moneyhistory").add({
-    user: currentUser.data().email,
-    type:"Deposit",
-    amount:amount,
-    balance:currentBalance,
-    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-  });
+/* ---------- BUILD login numpad (6-digit PIN) ---------- */
+(function buildLoginPad(){
+  const c = document.getElementById('loginNumpad');
+  for(let i=1;i<=9;i++){ const k=document.createElement('div'); k.className='key'; k.textContent=i; k.onclick = ()=>pressLoginPin(i); c.appendChild(k); }
+  const bk=document.createElement('div'); bk.className='key action'; bk.textContent='⌫'; bk.onclick = ()=>backLoginPin(); c.appendChild(bk);
+  const zero=document.createElement('div'); zero.className='key'; zero.textContent='0'; zero.onclick = ()=>pressLoginPin(0); c.appendChild(zero);
+  const ok=document.createElement('div'); ok.className='key ok'; ok.textContent='OK'; ok.onclick = ()=>submitLoginPin(); c.appendChild(ok);
+})();
 
-  showResit("Deposit", amount);
+function pressLoginPin(d){ if(loginPin.length>=6) return; loginPin += String(d); updateDots('pinDots', loginPin.length); }
+function backLoginPin(){ loginPin = loginPin.slice(0,-1); updateDots('pinDots', loginPin.length); }
+function updateDots(containerId, filled){ const dots = document.querySelectorAll(`#${containerId} .dot`); dots.forEach((el,i)=> el.style.background = i < filled ? 'var(--dark)' : '#e6eefc'); }
+
+async function submitLoginPin(){
+  if(loginPin.length !== 6) return alert('PIN mesti 6 digit');
+  // open token modal for login (10-digit password input)
+  try{
+    const token = await createTokenModal(10, 'login');
+    if(!token || token.length !== 10){ loginPin=''; updateDots('pinDots',0); return; }
+    await attemptLogin(loginPin, token);
+  }catch(e){
+    loginPin=''; updateDots('pinDots',0);
+  }
 }
 
-// ================= Transfer =================
-async function confirmTransfer(){
-  const email = document.getElementById('transfer-email').value.trim();
-  const amount = parseFloat(document.getElementById('transfer-amount').value);
-  const pin = document.getElementById('transfer-pin').value.trim();
-
-  if(pin!==currentUser.data().pin) return alert("PIN salah!");
-  if(amount<=0 || amount>currentBalance) return alert("Jumlah tidak sah!");
-
-  currentBalance -= amount;
-  lastAction = { type:"Transfer", amount, email };
-
-  // update sender
-  await db.collection("registerations").doc(currentUser.id).update({
-    wangsemasa: currentBalance
-  });
-
-  // add to history
-  await db.collection("moneyhistory").add({
-    user: currentUser.data().email,
-    type:"Transfer",
-    to: email,
-    amount: amount,
-    balance: currentBalance,
-    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-  });
-
-  showResit("Transfer", amount, email);
+/* attempt login verifying both PIN and token in registerations */
+async function attemptLogin(pin, token){
+  try{
+    const q = await db.collection('registerations').where('tokenID','==',token).where('pin','==',pin).get();
+    if(q.empty){ alert('Token atau PIN tidak sepadan'); loginPin=''; updateDots('pinDots',0); return; }
+    currentUserDoc = q.docs[0];
+    loginPin = ''; updateDots('pinDots',0);
+    // prepare UI
+    const d = currentUserDoc.data();
+    document.getElementById('userGreeting').textContent = `Hai, ${d.firstName || ''} ${d.lastName || ''}`.trim();
+    document.getElementById('userStatus').textContent = d.finalconfirm ? ('Wang semasa: RM' + (d.wangsemasa||0)) : 'Anda belum deposit apa-apa lagi.';
+    // build pin numpads for deposit/transfer
+    buildPinNumpad('depositPinNumpad', 'depositPinHidden', 'depositPin');
+    buildPinNumpad('transferPinNumpad', 'transferPinHidden', 'transferPin');
+    // build email keyboard and amount presets
+    buildEmailKeyboard(); populateAmounts();
+    showCard('mainCard');
+  }catch(e){ console.error(e); alert('Login error: '+e.message); loginPin=''; updateDots('pinDots',0); }
 }
 
-// ================= Resit =================
-function showResit(type, amount, email=null){
-  document.querySelectorAll('.container').forEach(c=>c.classList.add('hidden'));
-  document.getElementById('resit-page').classList.remove('hidden');
+/* ---------- BUILD PIN NUMPAD (used inside panels) ---------- */
+function buildPinNumpad(containerId, hiddenFieldId, stateVarName){
+  const c = document.getElementById(containerId);
+  if(!c) return;
+  c.innerHTML = '';
+  for(let i=1;i<=9;i++){ const k=document.createElement('div'); k.className='key'; k.textContent=i; k.onclick = ()=>pressPanelPin(stateVarName,String(i)); c.appendChild(k); }
+  const bk=document.createElement('div'); bk.className='key action'; bk.textContent='⌫'; bk.onclick = ()=>backPanelPin(stateVarName); c.appendChild(bk);
+  const zero=document.createElement('div'); zero.className='key'; zero.textContent='0'; zero.onclick = ()=>pressPanelPin(stateVarName,'0'); c.appendChild(zero);
+  const ok=document.createElement('div'); ok.className='key ok'; ok.textContent='OK'; ok.onclick = ()=>submitPanelPin(stateVarName); c.appendChild(ok);
+}
+function pressPanelPin(varName, digit){
+  if(varName==='depositPin'){ if(depositPin.length>=6) return; depositPin += digit; updateDots('depositPinDots', depositPin.length); }
+  if(varName==='transferPin'){ if(transferPin.length>=6) return; transferPin += digit; updateDots('transferPinDots', transferPin.length); }
+}
+function backPanelPin(varName){
+  if(varName==='depositPin'){ depositPin = depositPin.slice(0,-1); updateDots('depositPinDots', depositPin.length); }
+  if(varName==='transferPin'){ transferPin = transferPin.slice(0,-1); updateDots('transferPinDots', transferPin.length); }
+}
+function submitPanelPin(varName){
+  if(varName==='depositPin'){
+    if(depositPin.length !== 6) return alert('PIN mesti 6 digit');
+    promptTokenThenConfirm('deposit');
+  } else if(varName==='transferPin'){
+    if(transferPin.length !== 6) return alert('PIN mesti 6 digit');
+    promptTokenThenConfirm('transfer');
+  }
+}
 
-  const data = currentUser.data();
-  const box = document.getElementById('resit-box');
+/* ---------- TOKEN modal using password input (auto OK at length) ---------- */
+function createTokenModal(length = 10, forWhat = ''){
+  return new Promise((resolve,reject)=>{
+    const overlay = document.createElement('div');
+    overlay.style.position='fixed'; overlay.style.left=0; overlay.style.top=0; overlay.style.right=0; overlay.style.bottom=0;
+    overlay.style.background='rgba(0,0,0,0.35)'; overlay.style.display='flex'; overlay.style.alignItems='center'; overlay.style.justifyContent='center'; overlay.style.zIndex=9999;
+    const modal = document.createElement('div'); modal.style.width='360px'; modal.style.borderRadius='12px'; modal.style.background='#fff'; modal.style.padding='16px';
+    modal.style.boxShadow='0 10px 30px rgba(0,0,0,.2)';
+    modal.innerHTML = `<h3 style="margin:0 0 8px">Token ID (sulit)</h3>
+      <p style="margin:0 0 12px;color:#666;font-size:13px">Masukkan Token ID ${length}-digit untuk ${forWhat || 'pengesahan'}.</p>
+      <input id="tokenField" type="password" maxlength="${length}" autocomplete="one-time-code"
+        style="padding:12px 14px;font-size:16px;width:100%;border-radius:10px;border:1px solid #e6eefc;text-align:center;letter-spacing:3px;">
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button id="tokenCancel" style="flex:1;padding:10px;border-radius:8px" class="btn-ghost">Batal</button>
+      </div>`;
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    const field = modal.querySelector('#tokenField');
+    const cancel = modal.querySelector('#tokenCancel');
+
+    // focus for convenience
+    setTimeout(()=> field.focus(),120);
+
+    cancel.onclick = ()=>{ cleanup(); reject('cancel'); };
+
+    function onInput(){
+      const v = field.value || '';
+      if(v.length === length){
+        const tok = v;
+        cleanup();
+        resolve(tok);
+      }
+    }
+    field.addEventListener('input', onInput);
+
+    function cleanup(){
+      field.removeEventListener('input', onInput);
+      if(document.body.contains(overlay)) overlay.remove();
+    }
+  });
+}
+
+/* ---------- DEPOSIT FLOW ---------- */
+function selectDepositAmount(a){
+  if(a < 10 || a > 1000) { alert('Deposit mesti antara RM10 – RM1000'); return; }
+  selectedDepositAmount = a;
+  Array.from(document.getElementById('depositAmounts').children).forEach(el=>el.classList.remove('selected'));
+  const btn = Array.from(document.getElementById('depositAmounts').children).find(x=>x.dataset.val==a);
+  if(btn) btn.classList.add('selected');
+}
+
+function startDepositTokenStep(){
+  if(!selectedDepositAmount || selectedDepositAmount <= 0) return alert('Sila pilih jumlah deposit');
+  alert('Masukkan PIN pada keypad bawah deposit card, kemudian tekan OK.');
+}
+
+/* confirm deposit after token obtained; this function called after token prompt resolves */
+async function confirmDepositWithToken(token){
+  if(!currentUserDoc) return alert('Sila login');
+  if(!selectedDepositAmount) return alert('Jumlah tidak dipilih');
+  try{
+    const q = await db.collection('registerations').where('tokenID','==',token).get();
+    if(q.empty) return alert('Token pengesahan tidak sah');
+    if(depositPin !== currentUserDoc.data().pin) return alert('PIN tidak sepadan');
+    const cur = currentUserDoc.data();
+    const newBal = (cur.wangsemasa||0) + Number(selectedDepositAmount);
+    await db.collection('registerations').doc(currentUserDoc.id).update({ wangsemasa: newBal, finalconfirm:true });
+    await db.collection('moneyhistory').add({
+      userID: currentUserDoc.id,
+      name: (cur.firstName||'') + ' ' + (cur.lastName||''),
+      email: cur.email||'',
+      phone: cur.phone||'',
+      type:'deposit',
+      amount: Number(selectedDepositAmount),
+      balanceAfter: newBal,
+      status:'completed',
+      timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    currentUserDoc = await db.collection('registerations').doc(currentUserDoc.id).get();
+    renderReceipt({type:'Deposit', amount:Number(selectedDepositAmount), balance:newBal});
+    depositPin = ''; updateDots('depositPinDots',0);
+    selectedDepositAmount = 0; Array.from(document.getElementById('depositAmounts').children).forEach(el=>el.classList.remove('selected'));
+    showCard('receiptCard');
+  }catch(e){ console.error(e); alert('Gagal deposit: '+e.message); }
+}
+
+/* ---------- TRANSFER FLOW ---------- */
+function selectTransferAmount(a){
+  if(a < 1 || a > 500) { alert('Transfer mesti antara RM1 – RM500'); return; }
+  selectedTransferAmount = a;
+  Array.from(document.getElementById('transferAmounts').children).forEach(el=>el.classList.remove('selected'));
+  const btn = Array.from(document.getElementById('transferAmounts').children).find(x=>x.dataset.val==a);
+  if(btn) btn.classList.add('selected');
+}
+function emailBack(){ const e = document.getElementById('transferEmail'); e.value = e.value.slice(0,-1); }
+function emailAt(){ const e = document.getElementById('transferEmail'); e.value += '@gmail.com'; }
+
+function startTransferTokenStep(){
+  if(!document.getElementById('transferEmail').value.trim()) return alert('Masukkan email penerima');
+  if(!selectedTransferAmount) return alert('Pilih jumlah');
+  alert('Masukkan PIN pada keypad bawah transfer card, kemudian tekan OK.');
+}
+
+async function confirmTransferWithToken(token){
+  if(!currentUserDoc) return alert('Sila login');
+  const email = document.getElementById('transferEmail').value.trim();
+  if(!email) return alert('Emel penerima diperlukan');
+  if(!selectedTransferAmount) return alert('Jumlah belum dipilih');
+  try{
+    const qtk = await db.collection('registerations').where('tokenID','==',token).get();
+    if(qtk.empty) return alert('Token pengesahan tidak sah');
+    if(transferPin !== currentUserDoc.data().pin) return alert('PIN tidak sepadan');
+    const cur = currentUserDoc.data();
+    const curBal = cur.wangsemasa || 0;
+    if(Number(selectedTransferAmount) > curBal) return alert('Baki tidak mencukupi');
+    const newSenderBal = curBal - Number(selectedTransferAmount);
+    await db.collection('registerations').doc(currentUserDoc.id).update({ wangsemasa: newSenderBal });
+    const pendingRef = await db.collection('pendingTransfers').add({
+      from: cur.email || '',
+      fromId: currentUserDoc.id,
+      to: email,
+      amount: Number(selectedTransferAmount),
+      status: 'pending',
+      timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    await db.collection('moneyhistory').add({
+      userID: currentUserDoc.id,
+      name: (cur.firstName||'') + ' ' + (cur.lastName||''),
+      email: cur.email||'',
+      phone: cur.phone||'',
+      type:'transfer',
+      amount: Number(selectedTransferAmount),
+      balanceAfter: newSenderBal,
+      status:'pending',
+      to: email,
+      pendingId: pendingRef.id,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    currentUserDoc = await db.collection('registerations').doc(currentUserDoc.id).get();
+    renderReceipt({type:'Transfer (Pending)', amount:Number(selectedTransferAmount), balance:newSenderBal, to: email});
+    transferPin = ''; updateDots('transferPinDots',0);
+    selectedTransferAmount = 0; Array.from(document.getElementById('transferAmounts').children).forEach(el=>el.classList.remove('selected'));
+    document.getElementById('transferEmail').value = '';
+    showCard('receiptCard');
+  }catch(e){ console.error(e); alert('Gagal transfer: '+e.message); }
+}
+
+/* ---------- PENDING / RECEIVE ---------- */
+async function loadPending(){
+  if(!currentUserDoc) return;
+  const myEmail = currentUserDoc.data().email || '';
+  const cont = document.getElementById('pendingContainer');
+  cont.innerHTML = '<p class="small">Memuatkan...</p>';
+  try{
+    const snap = await db.collection('pendingTransfers').where('to','==',myEmail).where('status','==','pending').get();
+    cont.innerHTML = '';
+    if(snap.empty){ cont.innerHTML = '<p class="small">Tiada transfer pending.</p>'; return; }
+    snap.docs.forEach(doc=>{
+      const d = doc.data();
+      const div = document.createElement('div'); div.className='pending-card';
+      div.innerHTML = `<div><b>Dari:</b> ${d.from||'(unknown)'}</div><div><b>Jumlah:</b> RM${d.amount}</div>
+        <div class="pending-actions" style="margin-top:8px">
+          <button class="btn btn-primary" onclick="approvePendingPrompt('${doc.id}')">Approve</button>
+          <button class="btn btn-ghost" onclick="rejectPending('${doc.id}')">Tolak</button>
+        </div>`;
+      cont.appendChild(div);
+    });
+  }catch(e){ console.error(e); cont.innerHTML = '<p class="small">Error loading pending.</p>'; }
+}
+
+/* Approve with PIN -> token sequence (10-digit password modal) */
+function approvePendingPrompt(pendingId){
+  createTokenModal(10, 'approve').then(token => approvePending(pendingId, token)).catch(()=>{});
+}
+async function approvePending(pendingId, token){
+  try{
+    const qtk = await db.collection('registerations').where('tokenID','==',token).get();
+    if(qtk.empty) return alert('Token pengesahan tidak sah');
+    const pDoc = await db.collection('pendingTransfers').doc(pendingId).get();
+    if(!pDoc.exists) return alert('Pending tidak ditemui');
+    const p = pDoc.data();
+    if(p.status !== 'pending') return alert('Sudah diproses');
+    const rSnap = await db.collection('registerations').where('email','==', p.to).get();
+    if(rSnap.empty) return alert('Akaun penerima tidak wujud');
+    const rDoc = rSnap.docs[0];
+    await db.collection('registerations').doc(rDoc.id).update({ wangsemasa: firebase.firestore.FieldValue.increment(p.amount), finalconfirm:true });
+    await db.collection('pendingTransfers').doc(pendingId).update({ status:'approved', approvedAt: firebase.firestore.FieldValue.serverTimestamp() });
+    const rRef = await db.collection('registerations').doc(rDoc.id).get();
+    await db.collection('moneyhistory').add({
+      userID: rDoc.id,
+      name: (rRef.data().firstName||'') + ' ' + (rRef.data().lastName||''),
+      email: rRef.data().email||'',
+      phone: rRef.data().phone||'',
+      type:'receive',
+      from: p.from || '',
+      amount: p.amount,
+      balanceAfter: rRef.data().wangsemasa || 0,
+      status:'completed',
+      timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    const hist = await db.collection('moneyhistory').where('pendingId','==',pendingId).get();
+    if(!hist.empty){ hist.docs.forEach(h=> db.collection('moneyhistory').doc(h.id).update({status:'completed'})); }
+    alert('Transfer approved — wang telah masuk akaun anda.');
+    currentUserDoc = await db.collection('registerations').doc(currentUserDoc.id).get();
+    loadPending(); document.getElementById('userStatus').textContent = currentUserDoc.data().finalconfirm ? ('Wang semasa: RM' + (currentUserDoc.data().wangsemasa||0)) : 'Anda belum deposit apa-apa lagi.';
+  }catch(e){ console.error(e); alert('Gagal approve: '+e.message); }
+}
+
+/* Reject pending */
+async function rejectPending(pendingId){
+  if(!confirm('Tolak transaksi ini?')) return;
+  try{
+    const pDoc = await db.collection('pendingTransfers').doc(pendingId).get();
+    if(!pDoc.exists) return alert('Pending tak jumpa');
+    const p = pDoc.data();
+    if(p.status !== 'pending') return alert('Sudah diproses');
+    if(p.fromId){
+      await db.collection('registerations').doc(p.fromId).update({ wangsemasa: firebase.firestore.FieldValue.increment(p.amount) });
+    }
+    await db.collection('pendingTransfers').doc(pendingId).update({ status:'rejected', rejectedAt: firebase.firestore.FieldValue.serverTimestamp() });
+    const hist = await db.collection('moneyhistory').where('pendingId','==',pendingId).get();
+    if(!hist.empty){ hist.docs.forEach(h => db.collection('moneyhistory').doc(h.id).update({status:'rejected'})); }
+    alert('Transfer ditolak — wang dikembalikan.');
+    currentUserDoc = await db.collection('registerations').doc(currentUserDoc.id).get();
+    loadPending(); document.getElementById('userStatus').textContent = currentUserDoc.data().finalconfirm ? ('Wang semasa: RM' + (currentUserDoc.data().wangsemasa||0)) : 'Anda belum deposit apa-apa lagi.';
+  }catch(e){ console.error(e); alert('Gagal tolak: '+e.message); }
+}
+
+/* ---------- RECEIPT (54mm) ---------- */
+function renderReceipt(r){
+  const d = currentUserDoc ? currentUserDoc.data() : { firstName:'-', lastName:'', email:'-', phone:'-'};
+  const box = document.getElementById('receiptBox');
+  const ref = 'REF#' + Date.now().toString().slice(-10);
   box.innerHTML = `
-    <p><b>Nama:</b> ${data.firstName} ${data.lastName}</p>
-    <p><b>Email:</b> ${data.email}</p>
-    <p><b>Phone:</b> ${data.phone}</p>
-    <p><b>Jenis:</b> ${type}</p>
-    ${email? `<p><b>Kepada:</b> ${email}</p>`:""}
-    <p><b>Jumlah:</b> RM ${amount}</p>
-    <p><b>Baki Akhir:</b> RM ${currentBalance}</p>
+    <div class="title">SKYLINES e-Wallet Resit</div>
+    <div class="center">${d.firstName||''} ${d.lastName||''}</div>
+    <div class="line"></div>
+    Nama: ${d.firstName||''} ${d.lastName||''}
+    Email: ${d.email||''}
+    Phone: ${d.phone||''}
+    -------------------------------
+    Jenis: ${r.type}
+    ${ r.to ? `Kepada: ${r.to}` : '' }
+    Jumlah: RM${Number(r.amount).toFixed(2)}
+    Baki Akhir: RM${Number(r.balance||0).toFixed(2)}
+    -------------------------------
+    Tarikh: ${new Date().toLocaleString()}
+    Ref: ${ref}
+    \n\n\n\n\n
+    \t*** TERIMA KASIH! ***
   `;
 }
 
-function shareResit(){
-  const element = document.getElementById("resit-box");
-  html2canvas(element).then(canvas=>{
-    canvas.toBlob(blob=>{
-      const file = new File([blob],"resit.png",{type:"image/png"});
-      if(navigator.share){
-        navigator.share({
-          files:[file],
-          title:"Resit Transaksi SKYLINES",
-          text:"Resit transaksi eWallet"
-        }).then(()=>backAfterResit());
+/* share receipt then back to home */
+function shareAndReturn(){
+  const el = document.getElementById('receiptBox');
+  html2canvas(el, {scale:2}).then(canvas=>{
+    canvas.toBlob(async blob=>{
+      if(!blob){ alert('Gagal sediakan gambar resit'); return; }
+      const file = new File([blob],"SKYLINES_Resit.png",{type:"image/png"});
+      if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
+        try{ await navigator.share({ files:[file], title:"SKYLINES Resit", text:"Resit transaksi" }); }catch(e){}
+        afterShare();
       } else {
         const url = URL.createObjectURL(blob);
-        const a=document.createElement("a");
-        a.href=url; a.download="resit.png"; a.click();
-        URL.revokeObjectURL(url);
-        backAfterResit();
+        window.open(url, '_blank');
+        setTimeout(()=> URL.revokeObjectURL(url), 15000);
+        afterShare();
       }
-    });
+    }, 'image/png', 1);
   });
 }
-</script>
+function afterShare(){
+  if(currentUserDoc){
+    db.collection('registerations').doc(currentUserDoc.id).get().then(doc=>{
+      currentUserDoc = doc;
+      document.getElementById('userStatus').textContent = currentUserDoc.data().finalconfirm ? ('Wang semasa: RM' + (currentUserDoc.data().wangsemasa||0)) : 'Anda belum deposit apa-apa lagi.';
+      showCard('mainCard');
+    }).catch(()=> showCard('mainCard'));
+  } else showCard('mainCard');
+}
 
+/* ---------- UTIL: promptTokenThenConfirm (async) ---------- */
+async function promptTokenThenConfirm(flow){
+  try{
+    const token = await createTokenModal(10, flow);
+    if(!token || token.length !== 10) return;
+    if(flow === 'deposit'){
+      await confirmDepositWithToken(token);
+    } else if(flow === 'transfer'){
+      await confirmTransferWithToken(token);
+    }
+  }catch(e){
+    // cancelled
+  }
+}
+
+/* ---------- BUILD email keyboard & amounts ---------- */
+function buildEmailKeyboard(){
+  const letters = 'abcdefghijklmnopqrstuvwxyz0123456789._'.split('');
+  const wrap = document.getElementById('emailKeys'); wrap.innerHTML='';
+  letters.forEach(ch=>{
+    const btn = document.createElement('button'); btn.textContent=ch; btn.onclick=()=>{ document.getElementById('transferEmail').value += ch; };
+    wrap.appendChild(btn);
+  });
+}
+function populateAmounts(){
+  const depositPresets = [10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100,150,200,250,300,350,400,450,500]; // deposit 10-1000
+  const transferPresets = [1,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100,150,200,250,300,350,400,450,500]; // transfer 1-500
+
+  const depositCont = document.getElementById('depositAmounts'); depositCont.innerHTML='';
+  const transferCont = document.getElementById('transferAmounts'); transferCont.innerHTML='';
+
+  depositPresets.forEach(a=>{
+    const b = document.createElement('div');
+    b.className='amt-btn'; b.dataset.val=a; b.textContent='RM'+a;
+    b.onclick = ()=>{ selectDepositAmount(a); };
+    depositCont.appendChild(b);
+  });
+
+  transferPresets.forEach(a=>{
+    const t = document.createElement('div');
+    t.className='amt-btn'; t.dataset.val=a; t.textContent='RM'+a;
+    t.onclick = ()=>{ selectTransferAmount(a); };
+    transferCont.appendChild(t);
+  });
+}
+
+
+/* ---------- PANEL open/close ---------- */
+function openPanel(name){
+  if(!currentUserDoc) return alert('Sila login dahulu');
+  depositPin = ''; transferPin = ''; selectedDepositAmount = 0; selectedTransferAmount = 0;
+  Array.from(document.querySelectorAll('.amt-btn')).forEach(el=>el.classList.remove('selected'));
+  if(name==='receive') loadPending();
+  showCard(name+'Card');
+}
+function doLogout(){ currentUserDoc=null; loginPin=''; depositPin=''; transferPin=''; showCard('loginCard'); }
+
+/* ---------- INITIAL show login ---------- */
+showCard('loginCard');
+</script>
 </body>
 </html>
